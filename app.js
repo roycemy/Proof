@@ -12,7 +12,7 @@ const steps = [
 const coaches = [
   {
     id: "cuban",
-    icon: "⚡",
+    icon: "MC",
     name: "Mark Cuban AI",
     tag: "Sales, speed, and execution",
     inspired:
@@ -23,7 +23,7 @@ const coaches = [
   },
   {
     id: "blakely",
-    icon: "💡",
+    icon: "SB",
     name: "Sara Blakely AI",
     tag: "Creativity, customer insight, and resilience",
     inspired:
@@ -34,7 +34,7 @@ const coaches = [
   },
   {
     id: "hoffman",
-    icon: "🌐",
+    icon: "RH",
     name: "Reid Hoffman AI",
     tag: "Networks, distribution, and scaling",
     inspired:
@@ -214,6 +214,7 @@ function render() {
   window.scrollTo(0, 0);
   $("#app").innerHTML = state.screen === "landing" ? landing() : workspace();
   bind();
+  enhance();
 }
 function landing() {
   let xs = load();
@@ -229,6 +230,9 @@ function frame(i, body, sub = "") {
   let p = state.project,
     done = gate(p, i);
   return `<div class="step-head"><span class="step-kicker">${steps[i].time} · Step ${i + 1} of 7</span><h1>${steps[i].title}</h1><p>${sub}</p></div>${body}<div class="gate"><div><b>${done ? "Ready to move on" : "One quick choice left"}</b><small>Saved automatically. You can revise this later.</small></div>${i < 6 ? `<button class="btn primary next" ${done ? "" : "disabled"}>${i === 5 ? "See my build plan" : "Continue"} →</button>` : '<button class="btn primary" id="home">Back to ideas</button>'}</div>`;
+}
+function shell(p, body, sub = "", label = "Finish") {
+  return `<div class="step-head"><span class="step-kicker">Step 7 of 7 · ${steps[6].time}</span><h1>${steps[6].title}</h1><p>${sub}</p></div>${body}<div class="gate"><div><b>${label}</b><small>Your plan, coach, and evidence are saved on this device.</small></div><button class="btn primary" id="home">Back to ideas</button></div>`;
 }
 function stepView(p, i) {
   return [rough, reality, pivots, decision, kickoff, chooseCoach, build][i](p);
@@ -403,7 +407,6 @@ function bind() {
       $(id).onchange = (e) => {
         state.project[key] = e.target.value;
         persist();
-        render();
       };
   };
   saveField("#customer", "customer");
@@ -539,5 +542,44 @@ function bind() {
       render();
     };
 }
+// ---------- ambient effects + reveal ----------
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+if (!reducedMotion) {
+  addEventListener(
+    "pointermove",
+    (e) => {
+      document.documentElement.style.setProperty("--mx", e.clientX + "px");
+      document.documentElement.style.setProperty("--my", e.clientY + "px");
+    },
+    { passive: true },
+  );
+}
+const revealIO = new IntersectionObserver(
+  (entries) => {
+    for (const en of entries) {
+      if (en.isIntersecting) {
+        en.target.classList.add("in");
+        revealIO.unobserve(en.target);
+      }
+    }
+  },
+  { threshold: 0.08, rootMargin: "0px 0px -24px 0px" },
+);
+function enhance() {
+  if (!reducedMotion) {
+    $$(".card, .mini-step, .decision-card, .complete-banner, .coach-card, .project-card, .stat, .status, .step-head, .gate").forEach(
+      (el, i) => {
+        if (el.classList.contains("in")) return;
+        el.style.transitionDelay = Math.min(i % 8, 5) * 45 + "ms";
+        revealIO.observe(el);
+      },
+    );
+  } else {
+    $$(".card, .mini-step, .decision-card, .complete-banner, .coach-card, .project-card, .stat, .status, .step-head, .gate").forEach((el) =>
+      el.classList.add("in"),
+    );
+  }
+  let msgs = $(".messages");
+  if (msgs) msgs.scrollTop = msgs.scrollHeight;
+}
 render();
-
