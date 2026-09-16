@@ -382,7 +382,7 @@ function projectFromIdeation() {
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const voiceSupported = !!SR;
 const synth = window.speechSynthesis || null;
-let voice = { rec: null, listening: false, transcript: "", finalText: "", error: "", typeMode: false, speakOn: true, usedVoice: false, lastSpoken: "" };
+let voice = { rec: null, listening: false, transcript: "", finalText: "", error: "", typeMode: false, speakOn: true, usedVoice: false, lastSpoken: "", watchdog: null };
 
 function voiceStatusText() {
   if (voice.error === "denied") return "Microphone is blocked. Allow mic access for this site, or type instead.";
@@ -400,7 +400,11 @@ function voiceComposer(q, ready) {
 function stopVoice() {
   if (voice.rec && voice.listening) { try { voice.rec.stop(); } catch {} }
 }
+function clearVoiceWatchdog() {
+  if (voice.watchdog) { clearTimeout(voice.watchdog); voice.watchdog = null; }
+}
 function killVoice() {
+  clearVoiceWatchdog();
   if (voice.rec) { try { voice.rec.abort(); } catch {} voice.rec = null; }
   voice.listening = false;
   if (synth) { try { synth.cancel(); } catch {} }
@@ -418,6 +422,7 @@ function toggleVoice() {
   rec.continuous = false;
   rec.maxAlternatives = 1;
   rec.onresult = (e) => {
+    clearVoiceWatchdog();
     let interim = "", fin = "";
     for (let i = 0; i < e.results.length; i++) {
       const r = e.results[i];
@@ -430,6 +435,7 @@ function toggleVoice() {
     if (t) t.textContent = voice.transcript;
   };
   rec.onerror = (e) => {
+    clearVoiceWatchdog();
     voice.listening = false;
     if (e.error === "not-allowed" || e.error === "service-not-allowed") voice.error = "denied";
     else if (e.error === "audio-capture") voice.error = "no-mic";
@@ -439,6 +445,7 @@ function toggleVoice() {
     render();
   };
   rec.onend = () => {
+    clearVoiceWatchdog();
     const said = (voice.finalText || voice.transcript || "").trim();
     const failed = !!voice.error;
     voice.listening = false;
@@ -454,6 +461,12 @@ function toggleVoice() {
   try {
     rec.start();
     voice.listening = true;
+    voice.watchdog = setTimeout(() => {
+      if (voice.listening && !voice.transcript) {
+        voice.error = "no-speech";
+        stopVoice();
+      }
+    }, 15000);
     render();
   } catch (err) {
     voice.listening = false;
@@ -1000,4 +1013,5 @@ function enhance() {
 }
 state.account = currentAccount();
 render();
+
 
