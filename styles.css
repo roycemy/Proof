@@ -1118,3 +1118,102 @@ select.founder-input { appearance: none; }
   .composer-right { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
   .composer-right button { width: 100%; }
 }
+
+
+/* ---------- voice-first composer ---------- */
+.voice-deck {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 8px 4px;
+}
+.mic-btn {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background: var(--volt);
+  color: #14101f;
+  font-size: 34px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  box-shadow: var(--shadow-hard);
+  transition: transform 0.15s ease, background 0.2s ease;
+}
+.mic-btn:hover { transform: scale(1.06); }
+.mic-btn:active { transform: scale(0.97); }
+.mic-btn.listening { background: var(--coral); }
+.mic-ring { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; }
+.mic-btn.listening .mic-ring {
+  border: 2px solid var(--coral);
+  animation: micPulse 1.4s ease-out infinite;
+}
+@keyframes micPulse {
+  0% { transform: scale(1); opacity: 0.9; }
+  100% { transform: scale(1.75); opacity: 0; }
+}
+.voice-status {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: center;
+  max-width: 320px;
+}
+.voice-deck.live .voice-status { color: var(--coral-hi); }
+.voice-transcript {
+  min-height: 24px;
+  margin: 0;
+  font-size: 16px;
+  font-style: italic;
+  color: var(--text);
+  text-align: center;
+  max-width: 340px;
+}
+.voice-under {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.type-instead {
+  background: none;
+  border: none;
+  color: var(--volt);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  padding: 6px 4px;
+}
+.type-instead:hover { color: var(--volt-hi); }
+.voice-reply-toggle {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+.voice-reply-toggle:hover { color: var(--text); border-color: var(--faint); }
+.type-panel.collapsed { display: none; }
+.voice-unsupported {
+  font-size: 13px;
+  color: var(--amber);
+  background: rgba(255, 180, 58, 0.08);
+  border: 1px solid rgba(255, 180, 58, 0.25);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mic-btn.listening .mic-ring { animation: none; }
+}
