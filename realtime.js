@@ -87,4 +87,6 @@
     $('#muteRealtime')?.addEventListener('click',()=>{const t=rt.stream?.getAudioTracks()[0];if(t){t.enabled=!t.enabled;render();}});
     $('#typeInstead')?.addEventListener('click',()=>{const p=$('.rt-typing');p.hidden=!p.hidden;if(!p.hidden) $('#ideationAnswer')?.focus();});
   };
+  // Voice is the primary Proof entry. The full landing page remains reachable with Back.
+  if (state.screen === 'landing') startIdeation();
 })();
