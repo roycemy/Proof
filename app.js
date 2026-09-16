@@ -300,47 +300,80 @@ function landing() {
   let xs = load();
   return `<div class="landing"><nav class="nav"><div class="brand"><span class="brand-mark">P</span> Proof</div><div class="nav-right">${state.account ? accountChip() : '<button class="ghost-btn" id="how">See how it works</button>'}</div></nav><main class="hero entry-hero"><span class="eyebrow"><i class="dot"></i> Evidence Lab for first founders</span><h1>Type one messy sentence.<br><em>Leave with a founder plan.</em></h1><p class="hero-sub">Proof shapes your idea, matches you and your idea with the right entrepreneurship framework, and turns it into a tailored first-week plan.</p><div class="idea-box hero-idea"><textarea id="idea" placeholder="Example: a tool that helps independent gyms keep members from quitting..." aria-label="Type your idea"></textarea><button class="start" id="start">Shape this idea →</button></div><div class="alt-route"><span>Not sure what your idea is yet?</span><button class="alt-link" id="ideate"><span class="bot-avatar">P</span> Ideate with me instead →</button></div><p class="soft-note">Free to shape · Create a free account to unlock your plan · Everything stays on this device</p></main><section class="preview" id="preview"><div class="preview-head"><div><span class="step-kicker">The path</span><h2>Six steps from sentence to first test.</h2></div><p>Steps 01-03 shape the idea, free. Steps 04-06 are your personalized result - unlocked with a free account.</p></div><div class="seven">${steps.map((s, i) => `<div class="mini-step ${i >= AUTH_STEP ? "locked" : ""}"><div class="mini-num">0${i + 1} · ${i >= AUTH_STEP ? "🔒 " : ""}${s.time}</div><b>${s.title}</b></div>`).join("")}</div></section>${xs.length ? `<section class="projects-wrap"><span class="step-kicker">Your ideas</span><h2>Pick up where you left off</h2><div class="project-list">${xs.map((p) => `<button class="project-card resume" data-id="${p.id}"><small>${new Date(p.created).toLocaleDateString()} · ${p.origin === "ideation" ? "Guided conversation" : "Direct idea"}</small><h3>${esc(p.name)}</h3><p>${esc(p.idea)}</p><span class="score-sm">${readiness(hydrate(p))}</span><small> readiness</small></button>`).join("")}</div></section>` : ""}</div>`;
 }
-const ideaQuestions = [
-  { key: "spark", ask: () => "What problem, group, or change keeps pulling your attention?", hint: "A frustration you notice, people you understand, or a shift you cannot ignore." },
-  { key: "moment", ask: a => a.spark && a.spark !== "I don't know yet" ? `Think about “${a.spark}.” When did you last see this happen in real life?` : "What is one task or frustration you wish worked differently?", hint: "A recent moment is more useful than a broad market guess." },
-  { key: "customer", ask: a => a.moment ? `Who feels this most often when ${a.moment.toLowerCase()}?` : "Who would you most like to help first?", hint: "Pick one reachable kind of person, even if it is only a guess." },
-  { key: "outcome", ask: a => a.customer && a.customer !== "I don't know yet" ? `What would a better week look like for ${a.customer}?` : "What result should become faster, cheaper, safer, or less stressful?", hint: "Name the change, not the feature." },
-  { key: "skills", ask: a => `What can you bring to this - skills, access, experience, or unusual curiosity?`, hint: "It is fine to say you are starting from curiosity." },
-  { key: "constraint", ask: () => "What limit should the first version respect?", hint: "Time, budget, rules, technical ability, or access." },
-  { key: "timing", ask: () => "Is there a reason this is worth testing now?", hint: "A behavior shift, new tool, regulation, personal access, or simply a timely learning goal.", choices: ["Yes, something changed", "No clear reason", "I don't know yet"] },
+const ideaStages = [
+  { key: "spark", label: "Problem" },
+  { key: "moment", label: "Real moment" },
+  { key: "customer", label: "First people" },
+  { key: "outcome", label: "Better result" },
+  { key: "skills", label: "Founder fit" },
+  { key: "constraint", label: "First version" },
 ];
+function usefulIdeaAnswer(v) { return v && v !== "I don't know yet"; }
+function ideaReply(d) {
+  const a = d.answers, last = d.messages.filter(m => m.role === "user").at(-1)?.text || "";
+  if (!usefulIdeaAnswer(a.spark)) return { key: "spark", text: "What problem, group, or change keeps pulling your attention?", hint: "Start anywhere. A frustration, a type of person, or a change you keep noticing is enough." };
+  if (!usefulIdeaAnswer(a.moment)) return { key: "moment", text: `You said “${a.spark}.” What is one real moment when you saw or felt that problem?`, hint: "A specific story helps me ask a better next question than a broad market description." };
+  if (!usefulIdeaAnswer(a.customer)) {
+    const personal = /\b(i|my|me|we|our)\b/i.test(a.moment || "");
+    return { key: "customer", text: personal ? "It sounds like you know this problem firsthand. Who else has the same problem often enough to try an early solution?" : `In that moment - “${a.moment}” - who felt the pain most directly?`, hint: "Choose the first reachable person, not the whole eventual market." };
+  }
+  if (!usefulIdeaAnswer(a.outcome)) return { key: "outcome", text: `If this worked for ${a.customer}, what would be meaningfully different by the end of a week?`, hint: "Describe the result they would notice, not the feature you would build." };
+  if (!usefulIdeaAnswer(a.skills)) {
+    const signal = /build|code|design|sell|know|worked|experience|access/i.test(last);
+    return { key: "skills", text: signal ? "There may already be an edge in what you just said. What skills, access, experience, or unusual curiosity can you bring?" : `Why might you be a good person to test this with ${a.customer}?`, hint: "Curiosity and access count. You do not need to claim expertise." };
+  }
+  if (!usefulIdeaAnswer(a.constraint)) return { key: "constraint", text: `Given your advantage - “${a.skills}” - what is the smallest version you could test without overbuilding?`, hint: "Name the limit: time, cash, rules, technical ability, or access." };
+  return null;
+}
+function ideaStageIndex(d) { return Math.min(ideaStages.length, Object.values(d.answers).filter(usefulIdeaAnswer).length); }
+function ideaReady(d) { return Object.values(d.answers).filter(usefulIdeaAnswer).length >= 4; }
 function startIdeation() {
-  state.ideation = { index: 0, answers: {}, messages: [{ role: "proof", text: ideaQuestions[0].ask({}) }] };
+  const d = { answers: {}, messages: [] };
+  const q = ideaReply(d);
+  d.currentKey = q.key;
+  d.messages.push({ role: "proof", text: q.text });
+  state.ideation = d;
   state.screen = "ideate";
   render();
 }
 function ideaDirection(a) {
-  const spark = a.spark && a.spark !== "I don't know yet" ? a.spark : (a.moment && a.moment !== "I don't know yet" ? a.moment : "a problem worth exploring");
-  const who = a.customer && a.customer !== "I don't know yet" ? a.customer : "a reachable first group";
-  const outcome = a.outcome && a.outcome !== "I don't know yet" ? a.outcome : "a clearer, easier result";
+  const spark = usefulIdeaAnswer(a.spark) ? a.spark : (usefulIdeaAnswer(a.moment) ? a.moment : "a problem worth exploring");
+  const who = usefulIdeaAnswer(a.customer) ? a.customer : "a reachable first group";
+  const outcome = usefulIdeaAnswer(a.outcome) ? a.outcome : "a clearer, easier result";
   return `Help ${who} achieve ${outcome} by starting with ${spark}`;
 }
 function ideateView() {
-  const d = state.ideation, q = ideaQuestions[d.index], done = d.index >= ideaQuestions.length;
-  const a = d.answers;
-  return `<div class="ideation-page"><nav class="nav"><button class="brand brand-button" id="backLanding"><span class="brand-mark">P</span> Proof</button><span class="local-badge"><i class="dot"></i> Local guided prototype</span></nav><main class="ideation-shell"><aside class="ideation-brief"><span class="step-kicker">IDEA LAB · ${done ? "DIRECTION READY" : `QUESTION ${d.index + 1} OF ${ideaQuestions.length}`}</span><h1>${done ? "A direction you can test." : "Think out loud. Proof will find the shape."}</h1><p>${done ? "Review the synthesis, then carry it into the same founder path." : "This is a rules-based conversation running in your browser. It does not use or pretend to use a live AI model."}</p><div class="idea-progress"><i style="width:${Math.round((d.index / ideaQuestions.length) * 100)}%"></i></div><small>Answers stay in this browser and become editable fields in your plan.</small></aside><section class="ideation-chat"><div class="chat-thread" aria-live="polite">${d.messages.map(m => `<div class="chat-message ${m.role}">${m.role === "proof" ? '<span class="bot-avatar">P</span>' : ""}<div>${esc(m.text)}</div></div>`).join("")}${done ? `<div class="synthesis-card"><span class="path-number">WORKING DIRECTION</span><h2>${esc(ideaDirection(a))}</h2><dl><div><dt>First user</dt><dd>${esc(a.customer || "Unknown - test this first")}</dd></div><div><dt>Desired result</dt><dd>${esc(a.outcome || "Unknown - test this first")}</dd></div><div><dt>Founder fit</dt><dd>${esc(a.skills || "No advantage claimed yet")}</dd></div><div><dt>Constraint</dt><dd>${esc(a.constraint || "Unknown")}</dd></div></dl><p class="import-note">This is a working hypothesis built from your answers, not market validation.</p><button class="start" id="useDirection">Shape this direction →</button><button class="btn" id="restartIdeation">Start over</button></div>` : ""}</div>${!done ? `<form class="ideation-composer" id="ideationForm"><label for="ideationAnswer">${esc(q.ask(a))}</label><small>${esc(q.hint)}</small>${q.choices ? `<div class="ideation-choices">${q.choices.map(x => `<button type="button" class="choice ideation-choice" data-answer="${esc(x)}">${esc(x)}</button>`).join("")}</div>` : `<textarea id="ideationAnswer" placeholder="Type the honest version..." autofocus></textarea><div class="composer-actions"><button type="button" class="ghost-btn" id="notSure">I don’t know yet</button><button class="start" type="submit">Continue →</button></div>`}</form>` : ""}</section></main></div>`;
+  const d = state.ideation, q = ideaReply(d), done = !!d.done, ready = ideaReady(d), count = ideaStageIndex(d), a = d.answers;
+  const progress = Math.round((count / ideaStages.length) * 100);
+  return `<div class="ideation-page"><nav class="nav"><button class="brand brand-button" id="backLanding"><span class="brand-mark">P</span> Proof</button><span class="local-badge"><i class="dot"></i> Live local conversation</span></nav><main class="ideation-shell"><aside class="ideation-brief"><span class="step-kicker">IDEA LAB · ${done ? "RESULT READY" : ready ? "ENOUGH TO BUILD" : "LISTENING"}</span><h1>${done ? "Your idea has a shape." : "Talk it through. Watch the idea take shape."}</h1><p>${done ? "This working direction came from the conversation. You can carry it into the founder path or keep refining it." : "Proof reacts to what you say, follows useful details, and turns the conversation into a founder plan."}</p><div class="idea-progress" aria-label="Idea progress ${progress}%"><i style="width:${progress}%"></i></div><div class="idea-stage-list">${ideaStages.map((x,i) => `<div class="idea-stage ${i < count ? "complete" : i === count ? "current" : ""}"><span>${i < count ? "✓" : String(i+1).padStart(2,"0")}</span><b>${x.label}</b></div>`).join("")}</div><small>${ready && !done ? "There is enough signal for a first result. Keep talking, or see it now." : "Your conversation stays in this browser and becomes editable fields in the plan."}</small></aside><section class="ideation-chat"><div class="chat-thread" aria-live="polite">${d.messages.map(m => `<div class="chat-message ${m.role}">${m.role === "proof" ? '<span class="bot-avatar">P</span>' : ""}<div>${esc(m.text)}</div></div>`).join("")}${done ? `<div class="synthesis-card"><span class="path-number">YOUR WORKING DIRECTION</span><h2>${esc(ideaDirection(a))}</h2><dl><div><dt>First user</dt><dd>${esc(a.customer || "Open question")}</dd></div><div><dt>Desired result</dt><dd>${esc(a.outcome || "Open question")}</dd></div><div><dt>Founder fit</dt><dd>${esc(a.skills || "No advantage claimed yet")}</dd></div><div><dt>Small first version</dt><dd>${esc(a.constraint || "Keep it deliberately small")}</dd></div></dl><p class="import-note">A working hypothesis from your conversation, not market validation.</p><button class="start" id="useDirection">Use these results →</button><button class="btn" id="keepTalking">Keep talking</button><button class="btn" id="restartIdeation">Start over</button></div>` : ""}</div>${!done ? `<form class="ideation-composer" id="ideationForm"><div class="live-prompt"><span class="bot-avatar">P</span><div><label for="ideationAnswer">${esc(q.text)}</label><small>${esc(q.hint)}</small></div></div><textarea id="ideationAnswer" placeholder="Reply naturally... You can write a sentence or think out loud." autofocus></textarea><div class="composer-actions"><button type="button" class="ghost-btn" id="notSure">I’m not sure</button><div class="composer-right">${ready ? '<button type="button" class="btn see-results" id="seeResults">See results</button>' : ""}<button class="start" type="submit">Send ↑</button></div></div></form>` : ""}</section></main></div>`;
 }
 function acceptIdeationAnswer(value) {
-  const d = state.ideation, q = ideaQuestions[d.index], clean = value.trim();
-  if (!clean) return toast("An honest fragment is enough.");
+  const d = state.ideation, clean = value.trim();
+  if (!clean) return toast("Say it however it comes out.");
+  if (/^(see|show)( me)? (the )?results?[.!]?$/i.test(clean)) return finishIdeation();
+  const q = ideaReply(d);
   d.answers[q.key] = clean;
   d.messages.push({ role: "user", text: clean });
-  d.index += 1;
-  if (d.index < ideaQuestions.length) d.messages.push({ role: "proof", text: ideaQuestions[d.index].ask(d.answers) });
+  const next = ideaReply(d);
+  if (next) {
+    d.currentKey = next.key;
+    const acknowledgment = q.key === "spark" ? "That gives us a thread to follow." : q.key === "moment" ? "Good - a real moment is more useful than a polished pitch." : q.key === "customer" ? `That narrows the first audience to ${clean}.` : q.key === "outcome" ? "Now we have a result to test for." : q.key === "skills" ? "That changes what the first version should ask you to do." : "That is enough to keep the first test honest.";
+    d.messages.push({ role: "proof", text: `${acknowledgment} ${next.text}` });
+  } else finishIdeation(false);
   render();
+}
+function finishIdeation(shouldRender = true) {
+  const d = state.ideation;
+  if (!ideaReady(d)) return toast("A little more context first - four signals is enough.");
+  d.done = true;
+  d.messages.push({ role: "proof", text: "I have enough to turn this into a useful first direction. Here is what I heard." });
+  if (shouldRender) render();
 }
 function projectFromIdeation() {
   const d = state.ideation, a = d.answers, idea = ideaDirection(a);
-  const timing = a.timing === "Yes, something changed" ? "now" : a.timing === "No clear reason" ? "later" : "unknown";
   const constraint = /blocked|regulation|legal|cannot|can't|no access/i.test(a.constraint || "") ? "blocked" : (a.constraint ? "none" : "unknown");
-  return fresh(idea, { origin: "ideation", customer: a.customer === "I don't know yet" ? "" : (a.customer || ""), outcome: a.outcome === "I don't know yet" ? "" : (a.outcome || ""), skills: a.skills === "I don't know yet" ? "" : (a.skills || ""), advantage: a.skills === "I don't know yet" ? "" : (a.skills || ""), constraint, timing, ideationTranscript: d.messages.slice(), ideationAnswers: a });
+  return fresh(idea, { origin: "ideation", customer: usefulIdeaAnswer(a.customer) ? a.customer : "", outcome: usefulIdeaAnswer(a.outcome) ? a.outcome : "", skills: usefulIdeaAnswer(a.skills) ? a.skills : "", advantage: usefulIdeaAnswer(a.skills) ? a.skills : "", constraint, timing: "unknown", ideationTranscript: d.messages.slice(), ideationAnswers: a });
 }
-
 /* ---------- account gate ---------- */
 function gateView() {
   const p = state.project;
@@ -607,7 +640,8 @@ function bind() {
     if ($("#backLanding")) $("#backLanding").onclick = () => { state.screen = "landing"; render(); };
     if ($("#ideationForm")) $("#ideationForm").onsubmit = e => { e.preventDefault(); acceptIdeationAnswer($("#ideationAnswer").value); };
     if ($("#notSure")) $("#notSure").onclick = () => acceptIdeationAnswer("I don't know yet");
-    $$(".ideation-choice").forEach(b => b.onclick = () => acceptIdeationAnswer(b.dataset.answer));
+    if ($("#seeResults")) $("#seeResults").onclick = () => finishIdeation();
+    if ($("#keepTalking")) $("#keepTalking").onclick = () => { state.ideation.done = false; render(); };
     if ($("#restartIdeation")) $("#restartIdeation").onclick = startIdeation;
     if ($("#useDirection")) $("#useDirection").onclick = () => { state.project = projectFromIdeation(); persist(); state.screen = "work"; render(); };
     return;
