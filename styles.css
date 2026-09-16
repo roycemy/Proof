@@ -301,7 +301,7 @@ textarea, input, select { font-family: inherit; }
 .preview-head p { color: var(--muted); font-size: 15px; max-width: 300px; }
 .seven {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 0;
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
@@ -321,6 +321,22 @@ textarea, input, select { font-family: inherit; }
   font-size: 11px;
   color: var(--volt);
   letter-spacing: 0.14em;
+}
+/* exact 3x2 grid: no doubled outer borders */
+.mini-step:nth-child(3n) { border-right: 0; }
+.mini-step:nth-child(n+4) { border-bottom: 0; }
+@media (max-width: 900px) {
+  .seven { grid-template-columns: repeat(2, 1fr); }
+  .mini-step:nth-child(3n) { border-right: 1px solid var(--line-soft); }
+  .mini-step:nth-child(2n) { border-right: 0; }
+  .mini-step:nth-child(n+4) { border-bottom: 1px solid var(--line-soft); }
+  .mini-step:nth-child(n+5) { border-bottom: 0; }
+}
+@media (max-width: 560px) {
+  .seven { grid-template-columns: 1fr; }
+  .mini-step { border-right: 0; }
+  .mini-step:nth-child(n+4) { border-bottom: 1px solid var(--line-soft); }
+  .mini-step:last-child { border-bottom: 0; }
 }
 
 /* ---------- saved projects ---------- */
@@ -896,7 +912,7 @@ select.founder-input { appearance: none; }
 
 
 /* ---------- dual-entry + guided idea lab ---------- */
-.entry-hero { max-width: 900px; text-align: center; }
+.entry-hero { max-width: 900px; margin-left: auto; margin-right: auto; text-align: center; }
 .entry-hero .hero-sub { max-width: 640px; margin-left: auto; margin-right: auto; }
 .entry-paths { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; margin-top: 38px; }
 .path-card { position: relative; display: flex; flex-direction: column; min-height: 430px; padding: 30px; border: 1px solid var(--line); background: rgba(16, 13, 26, .94); box-shadow: 9px 10px 0 #060514; overflow: hidden; }
