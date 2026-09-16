@@ -1050,6 +1050,10 @@ select.founder-input { appearance: none; }
 }
 .linkedin-btn b { display: grid; place-items: center; width: 22px; height: 22px; background: #fff; color: #0a66c2; border-radius: 4px; font-size: 13px; }
 .linkedin-btn:hover { background: #0958a8; transform: translateY(-2px); }
+.linkedin-value { margin: 10px 2px 0; color: var(--text); font-size: 13px; line-height: 1.45; text-align: center; }
+.linkedin-status { margin: 5px 2px 0; color: var(--faint); font-family: var(--mono); font-size: 10px; line-height: 1.45; letter-spacing: 0.03em; text-align: center; }
+.founder-linkedin-value { margin-top: 12px; text-align: left; }
+.card .linkedin-status { text-align: left; }
 .linkedin-note {
   margin-top: 14px; padding: 13px 15px;
   border: 1px dashed var(--coral); border-radius: var(--r-sm);
@@ -1077,4 +1081,3 @@ select.founder-input { appearance: none; }
 @media (max-width: 640px) {
   .gate-page .local-badge { display: none; }
 }
-
