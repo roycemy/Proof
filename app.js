@@ -284,6 +284,7 @@ function maxOpen(p) {
   return 5;
 }
 function render() {
+  if (state.screen !== "ideate" || (state.ideation && state.ideation.done)) killVoice();
   if (state.screen === "work" && state.project && !state.account && state.project.step >= AUTH_STEP) {
     state.gateReturn = Math.min(state.project.step, 5);
     state.screen = "gate";
@@ -298,7 +299,7 @@ function render() {
 }
 function landing() {
   let xs = load();
-  return `<div class="landing"><nav class="nav"><div class="brand"><span class="brand-mark">P</span> Proof</div><div class="nav-right">${state.account ? accountChip() : '<button class="ghost-btn" id="how">See how it works</button>'}</div></nav><main class="hero entry-hero"><span class="eyebrow"><i class="dot"></i> Evidence Lab for first founders</span><h1>Type one messy sentence.<br><em>Leave with a founder plan.</em></h1><p class="hero-sub">Proof shapes your idea, matches you and your idea with the right entrepreneurship framework, and turns it into a tailored first-week plan.</p><div class="idea-box hero-idea"><textarea id="idea" placeholder="Example: a tool that helps independent gyms keep members from quitting..." aria-label="Type your idea"></textarea><button class="start" id="start">Shape this idea →</button></div><div class="alt-route"><span>Not sure what your idea is yet?</span><button class="alt-link" id="ideate"><span class="bot-avatar">P</span> Ideate with me instead →</button></div><p class="soft-note">Free to shape · Create a free account to unlock your plan · Everything stays on this device</p></main><section class="preview" id="preview"><div class="preview-head"><div><span class="step-kicker">The path</span><h2>Six steps from sentence to first test.</h2></div><p>Steps 01-03 shape the idea, free. Steps 04-06 are your personalized result - unlocked with a free account.</p></div><div class="seven">${steps.map((s, i) => `<div class="mini-step ${i >= AUTH_STEP ? "locked" : ""}"><div class="mini-num">0${i + 1} · ${i >= AUTH_STEP ? "🔒 " : ""}${s.time}</div><b>${s.title}</b></div>`).join("")}</div></section>${xs.length ? `<section class="projects-wrap"><span class="step-kicker">Your ideas</span><h2>Pick up where you left off</h2><div class="project-list">${xs.map((p) => `<button class="project-card resume" data-id="${p.id}"><small>${new Date(p.created).toLocaleDateString()} · ${p.origin === "ideation" ? "Guided conversation" : "Direct idea"}</small><h3>${esc(p.name)}</h3><p>${esc(p.idea)}</p><span class="score-sm">${readiness(hydrate(p))}</span><small> readiness</small></button>`).join("")}</div></section>` : ""}</div>`;
+  return `<div class="landing"><nav class="nav"><div class="brand"><span class="brand-mark">P</span> Proof</div><div class="nav-right">${state.account ? accountChip() : '<button class="ghost-btn" id="how">See how it works</button>'}</div></nav><main class="hero entry-hero"><span class="eyebrow"><i class="dot"></i> Evidence Lab for first founders</span><h1>Type one messy sentence.<br><em>Leave with a founder plan.</em></h1><p class="hero-sub">Proof shapes your idea, matches you and your idea with the right entrepreneurship framework, and turns it into a tailored first-week plan.</p><div class="idea-box hero-idea"><textarea id="idea" placeholder="Example: a tool that helps independent gyms keep members from quitting..." aria-label="Type your idea"></textarea><button class="start" id="start">Shape this idea →</button></div><div class="alt-route"><span>Not sure what your idea is yet?</span><button class="alt-link voice-cta" id="ideate"><span class="bot-avatar">🎙</span> Talk it through →</button></div><p class="soft-note">Free to shape · Create a free account to unlock your plan · Everything stays on this device</p></main><section class="preview" id="preview"><div class="preview-head"><div><span class="step-kicker">The path</span><h2>Six steps from sentence to first test.</h2></div><p>Steps 01-03 shape the idea, free. Steps 04-06 are your personalized result - unlocked with a free account.</p></div><div class="seven">${steps.map((s, i) => `<div class="mini-step ${i >= AUTH_STEP ? "locked" : ""}"><div class="mini-num">0${i + 1} · ${i >= AUTH_STEP ? "🔒 " : ""}${s.time}</div><b>${s.title}</b></div>`).join("")}</div></section>${xs.length ? `<section class="projects-wrap"><span class="step-kicker">Your ideas</span><h2>Pick up where you left off</h2><div class="project-list">${xs.map((p) => `<button class="project-card resume" data-id="${p.id}"><small>${new Date(p.created).toLocaleDateString()} · ${p.origin === "ideation" ? "Guided conversation" : "Direct idea"}</small><h3>${esc(p.name)}</h3><p>${esc(p.idea)}</p><span class="score-sm">${readiness(hydrate(p))}</span><small> readiness</small></button>`).join("")}</div></section>` : ""}</div>`;
 }
 const ideaStages = [
   { key: "spark", label: "Problem" },
@@ -328,6 +329,7 @@ function ideaReply(d) {
 function ideaStageIndex(d) { return Math.min(ideaStages.length, Object.values(d.answers).filter(usefulIdeaAnswer).length); }
 function ideaReady(d) { return Object.values(d.answers).filter(usefulIdeaAnswer).length >= 4; }
 function startIdeation() {
+  voice.error = ""; voice.transcript = ""; voice.finalText = ""; voice.usedVoice = false; voice.lastSpoken = "";
   const d = { answers: {}, messages: [] };
   const q = ideaReply(d);
   d.currentKey = q.key;
@@ -345,7 +347,7 @@ function ideaDirection(a) {
 function ideateView() {
   const d = state.ideation, q = ideaReply(d), done = !!d.done, ready = ideaReady(d), count = ideaStageIndex(d), a = d.answers;
   const progress = Math.round((count / ideaStages.length) * 100);
-  return `<div class="ideation-page"><nav class="nav"><button class="brand brand-button" id="backLanding"><span class="brand-mark">P</span> Proof</button><span class="local-badge"><i class="dot"></i> Live local conversation</span></nav><main class="ideation-shell"><aside class="ideation-brief"><span class="step-kicker">IDEA LAB · ${done ? "RESULT READY" : ready ? "ENOUGH TO BUILD" : "LISTENING"}</span><h1>${done ? "Your idea has a shape." : "Talk it through. Watch the idea take shape."}</h1><p>${done ? "This working direction came from the conversation. You can carry it into the founder path or keep refining it." : "Proof reacts to what you say, follows useful details, and turns the conversation into a founder plan."}</p><div class="idea-progress" aria-label="Idea progress ${progress}%"><i style="width:${progress}%"></i></div><div class="idea-stage-list">${ideaStages.map((x,i) => `<div class="idea-stage ${i < count ? "complete" : i === count ? "current" : ""}"><span>${i < count ? "✓" : String(i+1).padStart(2,"0")}</span><b>${x.label}</b></div>`).join("")}</div><small>${ready && !done ? "There is enough signal for a first result. Keep talking, or see it now." : "Your conversation stays in this browser and becomes editable fields in the plan."}</small></aside><section class="ideation-chat"><div class="chat-thread" aria-live="polite">${d.messages.map(m => `<div class="chat-message ${m.role}">${m.role === "proof" ? '<span class="bot-avatar">P</span>' : ""}<div>${esc(m.text)}</div></div>`).join("")}${done ? `<div class="synthesis-card"><span class="path-number">YOUR WORKING DIRECTION</span><h2>${esc(ideaDirection(a))}</h2><dl><div><dt>First user</dt><dd>${esc(a.customer || "Open question")}</dd></div><div><dt>Desired result</dt><dd>${esc(a.outcome || "Open question")}</dd></div><div><dt>Founder fit</dt><dd>${esc(a.skills || "No advantage claimed yet")}</dd></div><div><dt>Small first version</dt><dd>${esc(a.constraint || "Keep it deliberately small")}</dd></div></dl><p class="import-note">A working hypothesis from your conversation, not market validation.</p><button class="start" id="useDirection">Use these results →</button><button class="btn" id="keepTalking">Keep talking</button><button class="btn" id="restartIdeation">Start over</button></div>` : ""}</div>${!done ? `<form class="ideation-composer" id="ideationForm"><div class="live-prompt"><span class="bot-avatar">P</span><div><label for="ideationAnswer">${esc(q.text)}</label><small>${esc(q.hint)}</small></div></div><textarea id="ideationAnswer" placeholder="Reply naturally... You can write a sentence or think out loud." autofocus></textarea><div class="composer-actions"><button type="button" class="ghost-btn" id="notSure">I’m not sure</button><div class="composer-right">${ready ? '<button type="button" class="btn see-results" id="seeResults">See results</button>' : ""}<button class="start" type="submit">Send ↑</button></div></div></form>` : ""}</section></main></div>`;
+  return `<div class="ideation-page"><nav class="nav"><button class="brand brand-button" id="backLanding"><span class="brand-mark">P</span> Proof</button><span class="local-badge"><i class="dot"></i> Live local conversation</span></nav><main class="ideation-shell"><aside class="ideation-brief"><span class="step-kicker">IDEA LAB · ${done ? "RESULT READY" : ready ? "ENOUGH TO BUILD" : "LISTENING"}</span><h1>${done ? "Your idea has a shape." : "Talk it through. Watch the idea take shape."}</h1><p>${done ? "This working direction came from the conversation. You can carry it into the founder path or keep refining it." : "Proof reacts to what you say, follows useful details, and turns the conversation into a founder plan."}</p><div class="idea-progress" aria-label="Idea progress ${progress}%"><i style="width:${progress}%"></i></div><div class="idea-stage-list">${ideaStages.map((x,i) => `<div class="idea-stage ${i < count ? "complete" : i === count ? "current" : ""}"><span>${i < count ? "✓" : String(i+1).padStart(2,"0")}</span><b>${x.label}</b></div>`).join("")}</div><small>${ready && !done ? "There is enough signal for a first result. Keep talking, or see it now." : "Your conversation stays in this browser and becomes editable fields in the plan."}</small></aside><section class="ideation-chat"><div class="chat-thread" aria-live="polite">${d.messages.map(m => `<div class="chat-message ${m.role}">${m.role === "proof" ? '<span class="bot-avatar">P</span>' : ""}<div>${esc(m.text)}</div></div>`).join("")}${done ? `<div class="synthesis-card"><span class="path-number">YOUR WORKING DIRECTION</span><h2>${esc(ideaDirection(a))}</h2><dl><div><dt>First user</dt><dd>${esc(a.customer || "Open question")}</dd></div><div><dt>Desired result</dt><dd>${esc(a.outcome || "Open question")}</dd></div><div><dt>Founder fit</dt><dd>${esc(a.skills || "No advantage claimed yet")}</dd></div><div><dt>Small first version</dt><dd>${esc(a.constraint || "Keep it deliberately small")}</dd></div></dl><p class="import-note">A working hypothesis from your conversation, not market validation.</p><button class="start" id="useDirection">Use these results →</button><button class="btn" id="keepTalking">Keep talking</button><button class="btn" id="restartIdeation">Start over</button></div>` : ""}</div>${!done ? voiceComposer(q, ready) : ""}</section></main></div>`;
 }
 function acceptIdeationAnswer(value) {
   const d = state.ideation, clean = value.trim();
@@ -361,6 +363,7 @@ function acceptIdeationAnswer(value) {
     d.messages.push({ role: "proof", text: `${acknowledgment} ${next.text}` });
   } else finishIdeation(false);
   render();
+  speakLastProofMessage();
 }
 function finishIdeation(shouldRender = true) {
   const d = state.ideation;
@@ -374,6 +377,104 @@ function projectFromIdeation() {
   const constraint = /blocked|regulation|legal|cannot|can't|no access/i.test(a.constraint || "") ? "blocked" : (a.constraint ? "none" : "unknown");
   return fresh(idea, { origin: "ideation", customer: usefulIdeaAnswer(a.customer) ? a.customer : "", outcome: usefulIdeaAnswer(a.outcome) ? a.outcome : "", skills: usefulIdeaAnswer(a.skills) ? a.skills : "", advantage: usefulIdeaAnswer(a.skills) ? a.skills : "", constraint, timing: "unknown", ideationTranscript: d.messages.slice(), ideationAnswers: a });
 }
+
+/* ---------- voice-first composer ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const voiceSupported = !!SR;
+const synth = window.speechSynthesis || null;
+let voice = { rec: null, listening: false, transcript: "", finalText: "", error: "", typeMode: false, speakOn: true, usedVoice: false, lastSpoken: "" };
+
+function voiceStatusText() {
+  if (voice.error === "denied") return "Microphone is blocked. Allow mic access for this site, or type instead.";
+  if (voice.error === "no-mic") return "No microphone was found on this device. Type instead - it works the same.";
+  if (voice.error === "no-speech") return "I didn't catch that. Tap the mic and try again.";
+  if (voice.error === "network") return "The speech service hiccuped. Check your connection, or type instead.";
+  if (voice.error === "other") return "Voice input glitched. Try again, or type instead.";
+  if (voice.listening) return "Listening... tap again to send.";
+  return "Tap to talk";
+}
+function voiceComposer(q, ready) {
+  const typing = voice.typeMode || !voiceSupported;
+  return `<form class="ideation-composer ${typing ? "" : "voice-first"}" id="ideationForm"><div class="live-prompt"><span class="bot-avatar">P</span><div><label for="ideationAnswer">${esc(q.text)}</label><small>${esc(q.hint)}</small></div></div>${voiceSupported ? `<div class="voice-deck ${voice.listening ? "live" : ""}"><button type="button" class="mic-btn ${voice.listening ? "listening" : ""}" id="micBtn" aria-label="${voice.listening ? "Stop listening and send" : "Tap to talk"}" aria-pressed="${voice.listening ? "true" : "false"}"><span class="mic-ring" aria-hidden="true"></span><span class="mic-glyph" aria-hidden="true">${voice.listening ? "&#9632;" : "&#127897;"}</span></button><p class="voice-status" id="voiceStatus">${voiceStatusText()}</p><p class="voice-transcript" id="voiceTranscript">${esc(voice.transcript)}</p><div class="voice-under"><button type="button" class="type-instead" id="typeInstead">${typing ? "Hide typing" : "Type instead"}</button><button type="button" class="voice-reply-toggle" id="voiceReplyToggle" aria-pressed="${voice.speakOn ? "true" : "false"}">${voice.speakOn ? "&#128266; Replies aloud" : "&#128263; Replies muted"}</button></div></div>` : `<p class="voice-unsupported">Voice input is not supported in this browser. On your phone, open Proof in Safari or Chrome to talk. Typing below works everywhere.</p>`}<div class="type-panel ${typing ? "" : "collapsed"}" id="typePanel"><textarea id="ideationAnswer" placeholder="Reply naturally... You can write a sentence or think out loud." ${typing ? "autofocus" : ""}></textarea></div><div class="composer-actions"><button type="button" class="ghost-btn" id="notSure">I\u2019m not sure</button><div class="composer-right">${ready ? '<button type="button" class="btn see-results" id="seeResults">See results</button>' : ""}<button class="start" type="submit">Send \u2191</button></div></div></form>`;
+}
+function stopVoice() {
+  if (voice.rec && voice.listening) { try { voice.rec.stop(); } catch {} }
+}
+function killVoice() {
+  if (voice.rec) { try { voice.rec.abort(); } catch {} voice.rec = null; }
+  voice.listening = false;
+  if (synth) { try { synth.cancel(); } catch {} }
+}
+function toggleVoice() {
+  if (!voiceSupported) return;
+  if (voice.listening) { stopVoice(); return; }
+  voice.error = "";
+  voice.transcript = "";
+  voice.finalText = "";
+  const rec = new SR();
+  voice.rec = rec;
+  rec.lang = "en-US";
+  rec.interimResults = true;
+  rec.continuous = false;
+  rec.maxAlternatives = 1;
+  rec.onresult = (e) => {
+    let interim = "", fin = "";
+    for (let i = 0; i < e.results.length; i++) {
+      const r = e.results[i];
+      if (r.isFinal) fin += r[0].transcript;
+      else interim += r[0].transcript;
+    }
+    voice.finalText = fin;
+    voice.transcript = (fin + " " + interim).trim();
+    const t = $("#voiceTranscript");
+    if (t) t.textContent = voice.transcript;
+  };
+  rec.onerror = (e) => {
+    voice.listening = false;
+    if (e.error === "not-allowed" || e.error === "service-not-allowed") voice.error = "denied";
+    else if (e.error === "audio-capture") voice.error = "no-mic";
+    else if (e.error === "no-speech") voice.error = "no-speech";
+    else if (e.error === "network") voice.error = "network";
+    else voice.error = "other";
+    render();
+  };
+  rec.onend = () => {
+    const said = (voice.finalText || voice.transcript || "").trim();
+    const failed = !!voice.error;
+    voice.listening = false;
+    voice.rec = null;
+    if (!failed && said) {
+      voice.transcript = "";
+      voice.usedVoice = true;
+      acceptIdeationAnswer(said);
+    } else {
+      render();
+    }
+  };
+  try {
+    rec.start();
+    voice.listening = true;
+    render();
+  } catch (err) {
+    voice.listening = false;
+    voice.rec = null;
+    voice.error = "other";
+    render();
+  }
+}
+function speakLastProofMessage() {
+  if (!voice.speakOn || !voice.usedVoice || !synth || state.screen !== "ideate" || !state.ideation) return;
+  const last = state.ideation.messages.filter((m) => m.role === "proof").at(-1);
+  if (!last || last.text === voice.lastSpoken) return;
+  voice.lastSpoken = last.text;
+  try {
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance(last.text);
+    u.rate = 1.02;
+    synth.speak(u);
+  } catch {}
+}
+
 /* ---------- account gate ---------- */
 function gateView() {
   const p = state.project;
@@ -639,6 +740,9 @@ function bind() {
   if (state.screen === "ideate") {
     if ($("#backLanding")) $("#backLanding").onclick = () => { state.screen = "landing"; render(); };
     if ($("#ideationForm")) $("#ideationForm").onsubmit = e => { e.preventDefault(); acceptIdeationAnswer($("#ideationAnswer").value); };
+    if ($("#micBtn")) $("#micBtn").onclick = toggleVoice;
+    if ($("#typeInstead")) $("#typeInstead").onclick = () => { voice.typeMode = !voice.typeMode; voice.error = ""; render(); if (voice.typeMode) setTimeout(() => $("#ideationAnswer")?.focus(), 40); };
+    if ($("#voiceReplyToggle")) $("#voiceReplyToggle").onclick = () => { voice.speakOn = !voice.speakOn; if (!voice.speakOn && synth) { try { synth.cancel(); } catch {} } render(); };
     if ($("#notSure")) $("#notSure").onclick = () => acceptIdeationAnswer("I don't know yet");
     if ($("#seeResults")) $("#seeResults").onclick = () => finishIdeation();
     if ($("#keepTalking")) $("#keepTalking").onclick = () => { state.ideation.done = false; render(); };
@@ -896,3 +1000,4 @@ function enhance() {
 }
 state.account = currentAccount();
 render();
+
