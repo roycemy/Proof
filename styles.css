@@ -1097,3 +1097,24 @@ select.founder-input { appearance: none; }
 @media (max-width: 640px) {
   .gate-page .local-badge { display: none; }
 }
+
+
+/* ---------- adaptive idea conversation ---------- */
+.idea-stage-list { display: grid; gap: 7px; margin: 0 0 24px; }
+.idea-stage { display: grid; grid-template-columns: 28px 1fr; align-items: center; gap: 10px; min-height: 32px; color: var(--faint); font: 500 11px/1.2 "IBM Plex Mono", monospace; text-transform: uppercase; letter-spacing: .06em; }
+.idea-stage span { width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid var(--line); color: var(--faint); font-size: 10px; }
+.idea-stage.current { color: var(--text); }
+.idea-stage.current span { border-color: var(--volt); color: var(--volt); box-shadow: 0 0 12px rgba(157,140,255,.25); }
+.idea-stage.complete { color: var(--muted); }
+.idea-stage.complete span { border-color: var(--volt); color: #0b0913; background: var(--volt); }
+.live-prompt { display: flex; gap: 13px; align-items: flex-start; margin-bottom: 16px; }
+.live-prompt > div { min-width: 0; }
+.live-prompt label { margin: 0 0 6px; }
+.live-prompt small { display: block; color: var(--muted); line-height: 1.45; }
+.composer-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.see-results { border-color: var(--volt); color: var(--volt); }
+@media (max-width: 640px) {
+  .idea-stage-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 12px; }
+  .composer-right { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+  .composer-right button { width: 100%; }
+}
