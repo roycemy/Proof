@@ -4,6 +4,7 @@
   const baseStart = startIdeation;
   const baseKill = killVoice;
   const baseFinish = finishIdeation;
+  const REALTIME_MODEL = 'gpt-realtime-2.1-mini';
   const rt = { pc:null, dc:null, stream:null, audio:null, status:'ready', detail:'Tap Start conversation', active:false, transcript:[], error:'', connected:false };
   window.proofRealtime = rt;
 
@@ -62,7 +63,7 @@
         dc.send(JSON.stringify({type:'response.create',response:{instructions:'Open naturally in one brief sentence. Ask what idea, problem, or change has been on their mind.'}}));
       });
       const offer=await pc.createOffer(); await pc.setLocalDescription(offer);
-      const sdp=await fetch('https://api.openai.com/v1/realtime/calls?model=gpt-realtime',{method:'POST',body:offer.sdp,headers:{Authorization:`Bearer ${secret}`,'Content-Type':'application/sdp'}});
+      const sdp=await fetch('https://api.openai.com/v1/realtime/calls?model=' + REALTIME_MODEL,{method:'POST',body:offer.sdp,headers:{Authorization:`Bearer ${secret}`,'Content-Type':'application/sdp'}});
       if (!sdp.ok) throw new Error(`The real-time provider rejected the session (${sdp.status}).`);
       await pc.setRemoteDescription({type:'answer',sdp:await sdp.text()});
     } catch(err) {
