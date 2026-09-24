@@ -1,5 +1,5 @@
 /* Proof product analytics (PostHog). Loaded after app.js and realtime.js.
-   Tracks the funnel: landing -> idea started -> voice session -> result -> build plan.
+   Funnel: $pageview -> idea_started / voice_session_started -> project_created -> result_viewed -> plan_completed.
    Session replay masks all inputs and all page text in the browser before anything
    is sent, so replays show layout, clicks, and scrolling but not what people typed
    or what their plan says. Voice audio is never recorded. */
@@ -59,6 +59,7 @@
   }
 
   var last = { screen: null, step: null, account: null };
+  var trackedIdeation = null;
   function afterRender() {
     try {
       var s = state;
@@ -69,8 +70,12 @@
       if (screen !== last.screen || step !== last.step) {
         track('screen_viewed', { screen: screen, step: step, step_name: step != null && steps[step] ? steps[step].short : null });
       }
-      if (screen === 'ideate') once('ideate:' + pid, 'idea_started', { mode: 'guided' });
-      if (screen === 'work' && s.project) once('project:' + pid, 'idea_started', { mode: 'typed' });
+      var answered = s.ideation && s.ideation.answers ? Object.keys(s.ideation.answers).filter(function (k) { return usefulIdeaAnswer(s.ideation.answers[k]); }).length : 0;
+      if (screen === 'ideate' && answered > 0 && trackedIdeation !== s.ideation) {
+        trackedIdeation = s.ideation;
+        track('idea_started', { mode: 'guided' });
+      }
+      if (screen === 'work' && s.project) once('project:' + pid, 'project_created', { from_voice: !!trackedIdeation });
       if (screen === 'gate') once('gate:' + pid, 'result_gate_viewed', { step: step });
       if (screen === 'work' && step === 4) once('result:' + pid, 'result_viewed', {});
       if (screen === 'work' && step === 5) once('plan:' + pid, 'plan_completed', { coach: s.project && s.project.coach || null });
