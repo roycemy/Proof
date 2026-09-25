@@ -5,7 +5,7 @@
   const baseKill = killVoice;
   const baseFinish = finishIdeation;
   const REALTIME_MODEL = 'gpt-realtime-2.1-mini';
-  const rt = { pc:null, dc:null, stream:null, audio:null, status:'ready', detail:'Tap Start conversation', active:false, transcript:[], error:'', connected:false };
+  const rt = { pc:null, dc:null, stream:null, audio:null, status:'ready', detail:'Tap Start conversation', active:false, transcript:[], error:'', connected:false, responseStartedAt:0 };
   window.proofRealtime = rt;
 
   function cleanUp() {
@@ -23,12 +23,24 @@
     for (const k of ideaStages.map(x=>x.key)) if (typeof v[k] === 'string' && v[k].trim()) state.ideation.answers[k] = v[k].trim();
     persist();
   }
+  function reportResponse(m) {
+    // Deliberately never send m itself: Realtime events can contain speech and transcripts.
+    const u=m.response?.usage || {};
+    const input=u.input_token_details || {}; const output=u.output_token_details || {};
+    const payload={type:'voice_response',result:m.response?.status,
+      duration_ms:rt.responseStartedAt?Math.max(0,Math.round(performance.now()-rt.responseStartedAt)):undefined,
+      input_tokens:u.input_tokens,output_tokens:u.output_tokens,
+      audio_input_tokens:input.audio_tokens,audio_output_tokens:output.audio_tokens};
+    rt.responseStartedAt=0;
+    try { fetch('/api/realtime/trace',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload),keepalive:true}).catch(()=>{}); } catch {}
+  }
   function onEvent(e) {
     let m; try { m=JSON.parse(e.data); } catch { return; }
     if (m.type==='input_audio_buffer.speech_started') setStatus('listening','I hear you');
     if (m.type==='input_audio_buffer.speech_stopped') setStatus('thinking','Thinking');
     if (m.type==='response.audio.delta') { rt.status='speaking'; rt.detail='Proof is speaking - talk anytime to interrupt'; }
-    if (m.type==='response.done') setStatus('listening','Listening');
+    if (m.type==='response.created') rt.responseStartedAt=performance.now();
+    if (m.type==='response.done') { reportResponse(m); setStatus('listening','Listening'); }
     if (m.type==='conversation.item.input_audio_transcription.completed' && m.transcript) {
       rt.transcript.push({role:'user',text:m.transcript}); render();
     }

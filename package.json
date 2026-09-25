@@ -1,0 +1,25 @@
+{
+  "name": "proof",
+  "version": "1.0.0",
+  "description": "Type one messy sentence, get a founder plan. Proof shapes a rough idea (or helps you find one in a short guided conversation), matches the idea and the founder with the right entrepreneurship framework, and turns it into a tailored first-week plan.",
+  "main": "3-realtime.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/roycemy/Proof.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/roycemy/Proof/issues"
+  },
+  "homepage": "https://github.com/roycemy/Proof#readme",
+  "dependencies": {
+    "@langfuse/otel": "^5.11.1",
+    "@langfuse/tracing": "^5.11.1",
+    "@opentelemetry/sdk-node": "^0.222.0"
+  }
+}
